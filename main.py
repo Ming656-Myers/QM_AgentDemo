@@ -12,8 +12,8 @@ print("\n欢迎使用QM_AgentDemo!（输入'Q'或'q'结束对话）\n")
 messages = [
     {
         #role表示消息角色，system表示系统消息；#content表示消息内容，即给系统拟定的前提条件
-        "role": "system",
-        "content": system_prompts.SYSTEM_PROMPT
+        "role":"system",
+        "content":system_prompts.SYSTEM_PROMPT
     }
 ]
 
@@ -28,45 +28,60 @@ while True:
         print("对话结束")
         break
     
-    #添加用户信息
+    #decision_messages不能复制messages的内容。工具决策要作为一个独立的任务，只看当前用户的输入，不看历史对话
+    #1.先单独做LLM工具决策
+    decision_messages = [
+        {
+            "role":"system",
+            "content":tool_prompts.TOOL_PROMPT
+        },
+        {
+            "role":"user",
+            "content":user_input
+        }
+    ]
+
+    #获取LLM返回的结果：结果能决定是否调用工具
+    decision_reply = chat.chat_with_llm(client, decision_messages)
+    decision_reply = decision_reply.strip()
+
+    #2.将用户输入加入到正式聊天历史
     messages.append({
         #role表示消息角色，user表示用户输入；#content表示消息内容，即用户真正说的话
         "role": "user",
         "content": user_input
     })
-    
-    #decision_messages复制messages的内容
-    decision_messages = messages.copy()
-    #向decision_messages中添加TOOL_PROMPT
-    decision_messages.append({
-        "role":"system",
-        "content":tool_prompts.TOOL_PROMPT
-    })
 
-    #获取LLM返回的结果
-    agent_reply = chat.chat_with_llm(client, decision_messages)
-
-    #判断是否调用工具
-    if "TOOL:" in agent_reply:
+    #3.判断是否调用工具
+    #调用工具
+    if decision_reply.startswith("TOOL:"):
         
-        #提取参数
-        lines = agent_reply.split("\n")
+        #提取工具参数
+        lines = decision_reply.split("\n")
         tool_name = lines[0].replace("TOOL:", "").strip()
         args = lines[1].replace("ARGS:", "").strip()
 
-        if tool_name == "weather_tool":
-            
-            #这里的tool_replay是Python执行Tool后返回的结果，不是LLM返回的结果
-            tool_reply = tools.weather_tool(args)
-            
-            #observation_messages复制messages的内容
+        #判断使用什么工具
+        if tool_name in tools.TOOL_REGISTRY:
+
+            #tool_func变量，保存一个函数对象。eg: weather_tool()、time_tool()等
+            tool_func = tools.TOOL_REGISTRY[tool_name]
+            #调用工具的返回结果
+            tool_reply = tool_func(args)
+
             observation_messages = messages.copy()
-            #向observation_messages中添加build_observation_prompt
+
             observation_messages.append({
-                "role":"system",
-                "content":system_prompts.build_observation_prompt(tool_reply)
+                "role": "assistant",
+                "content": decision_reply
             })
 
+            observation_messages.append({
+                "role": "user",
+                "content": system_prompts.build_observation_prompt(tool_reply)
+            })
+
+            #模型的最终回复
             final_reply = chat.chat_with_llm(client, observation_messages)
             print(f"模型回复：{final_reply}\n")
 
@@ -76,12 +91,20 @@ while True:
                 "content": final_reply
             })
     
-    else:
+    #不调用工具
+    elif decision_reply == "NO_TOOL":
         
-        #这里的agent_reply才是LLM返回的结果
-        print(f"模型回复：{agent_reply}\n")
+        final_reply = chat.chat_with_llm(client, messages)
+        
+        #这里的final_reply才是LLM返回的结果
+        print(f"模型回复：{final_reply}\n")
         #将LLM回复也加入到对话历史
         messages.append({
             "role": "assistant",
-            "content": agent_reply
+            "content": final_reply
         })
+
+    #第一次LLM工具决策输出格式错误
+    else:
+
+        print(f"工具决策输出格式错误：{decision_reply}\n")
