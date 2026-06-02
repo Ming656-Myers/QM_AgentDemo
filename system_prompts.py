@@ -13,7 +13,7 @@ def build_observation_prompt(tool_reply):
 
 {tool_reply}
 
-请基于工具返回结果，
-自然地回答用户问题。
+请基于工具返回结果，自然地回答用户问题。
+不要重复输出工具决策结果，也不要解释工具调用过程。
 """
 
