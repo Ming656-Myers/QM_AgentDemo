@@ -1,8 +1,8 @@
 import llm_client
-import system_prompts
-import tool_prompts
+import prompts.system_prompts
+import prompts.tool_prompts
 import chat
-import tools
+from tools.registry import TOOL_REGISTRY
 
 #创建一个OpenAI client对象
 client = llm_client.create_client()
@@ -13,7 +13,7 @@ messages = [
     {
         #role表示消息角色，system表示系统消息；#content表示消息内容，即给系统拟定的前提条件
         "role":"system",
-        "content":system_prompts.SYSTEM_PROMPT
+        "content":prompts.system_prompts.SYSTEM_PROMPT
     }
 ]
 
@@ -33,7 +33,7 @@ while True:
     decision_messages = [
         {
             "role":"system",
-            "content":tool_prompts.TOOL_PROMPT
+            "content":prompts.tool_prompts.TOOL_PROMPT
         },
         {
             "role":"user",
@@ -62,23 +62,23 @@ while True:
         args = lines[1].replace("ARGS:", "").strip()
 
         #判断使用什么工具
-        if tool_name in tools.TOOL_REGISTRY:
+        if tool_name in TOOL_REGISTRY:
 
             #tool_func变量，保存一个函数对象。eg: weather_tool()、time_tool()等
-            tool_func = tools.TOOL_REGISTRY[tool_name]
+            tool_func = TOOL_REGISTRY[tool_name]
             #调用工具的返回结果
             tool_reply = tool_func(args)
 
             observation_messages = messages.copy()
 
             observation_messages.append({
-                "role": "assistant",
-                "content": decision_reply
+                "role":"assistant",
+                "content":decision_reply
             })
 
             observation_messages.append({
-                "role": "user",
-                "content": system_prompts.build_observation_prompt(tool_reply)
+                "role":"user",
+                "content":prompts.system_prompts.build_observation_prompt(tool_reply)
             })
 
             #模型的最终回复
