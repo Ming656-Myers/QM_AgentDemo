@@ -8,13 +8,13 @@ import os
 #读取当前目录下的.env文件，会把.env中的内容加载到环境变量中
 load_dotenv()
 
-def create_client():
+def create_client(api_key=None, base_url=None):
 
     client = OpenAI(
         #从环境变量中读取API Key
-        api_key=os.getenv(config.API_KEY_ENV),
+        api_key=api_key or os.getenv(config.API_KEY_ENV),
         #设置请求的基础URL，默认是https://api.openai.com/v1。如果使用的是SiliconFlow的API，需要修改为https://api.siliconflow.cn/v1
-        base_url=config.BASE_URL
+        base_url=base_url or config.BASE_URL
     )
 
     return client

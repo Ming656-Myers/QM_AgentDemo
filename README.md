@@ -10,6 +10,22 @@
 
 2.随后可通过不同功能调用大模型完成相应的科研写作辅助任务。
 
+## Web App 运行方式
+在已有的 `qm_AgentDemo_env` 环境中运行：
+
+```bash
+conda activate qm_AgentDemo_env
+streamlit run app.py
+```
+
+如果当前终端无法直接识别 `streamlit` 命令，也可以使用：
+
+```bash
+python -m streamlit run app.py
+```
+
+启动后在浏览器打开 `http://localhost:8501`。
+
 ## 项目特点
 1.项目采用模块化设计，不同功能可以由用户根据个人需求配置独立Prompt，并通过统一的Agent调用流程完成输入处理、模型请求、结果生成和页面展示。
 
